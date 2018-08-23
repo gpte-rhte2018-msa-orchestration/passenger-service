@@ -2,6 +2,8 @@ package com.acme.ride.passenger;
 
 import javax.jms.ConnectionFactory;
 
+import com.acme.ride.passenger.tracing.TracingJmsTemplate;
+import io.opentracing.Tracer;
 import org.amqphub.spring.boot.jms.autoconfigure.AMQP10JMSProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jms.DefaultJmsListenerContainerFactoryConfigurer;
@@ -22,6 +24,9 @@ public class PassengerServiceJmsConfiguration {
     @Autowired
     private JmsProperties jmsProperties;
 
+    @Autowired
+    private Tracer tracer;
+
     private boolean subscriptionShared;
 
     private boolean subscriptionDurable;
@@ -40,10 +45,11 @@ public class PassengerServiceJmsConfiguration {
     }
 
     @Bean
-    public JmsTemplate jmsTemplate(ConnectionFactory connectionFactory) {
-        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+    public JmsTemplate jmsTemplate(ConnectionFactory connectionFactory, Tracer tracer) {
+        JmsTemplate jmsTemplate = new TracingJmsTemplate(connectionFactory, tracer);
         jmsTemplate.setPubSubDomain(this.jmsProperties.isPubSubDomain());
         jmsTemplate.setSessionTransacted(transacted);
+
         return jmsTemplate;
     }
 
