@@ -1,5 +1,6 @@
 package com.acme.ride.passenger.message;
 
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -14,6 +15,8 @@ import com.acme.ride.passenger.service.DataGenerator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import io.opentracing.Tracer;
+import io.opentracing.tag.StringTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +30,9 @@ public class DriverAssignedEventMessageListener {
     private final static Logger log = LoggerFactory.getLogger(DriverAssignedEventMessageListener.class);
 
     private ScheduledExecutorService scheduler;
+
+    @Autowired
+    Tracer tracer;
 
     @Value("${scheduler.pool.size}")
     int threadPoolSize;
@@ -92,15 +98,15 @@ public class DriverAssignedEventMessageListener {
     private boolean accept(String messageAsJson) {
         try {
             String messageType = JsonPath.read(messageAsJson, "$.messageType");
-            if (!"DriverAssignedEvent".equalsIgnoreCase(messageType) ) {
-                log.debug("Message with type '" + messageType + "' is ignored");
-                return false;
+            if ("DriverAssignedEvent".equalsIgnoreCase(messageType) ) {
+                return true;
             }
-            return true;
+            log.debug("Message with type '" + messageType + "' is ignored");
         } catch (Exception e) {
             log.warn("Unexpected message without 'messageType' field.");
-            return false;
         }
+        Optional.ofNullable(tracer.activeSpan()).ifPresent(s -> new StringTag("msg.accepted").set(s, "false"));
+        return false;
     }
 
     private Runnable scheduleSendMessage(final Message<PassengerCanceledEvent> message) {
