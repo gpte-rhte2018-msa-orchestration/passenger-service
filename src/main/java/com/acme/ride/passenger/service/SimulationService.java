@@ -11,6 +11,9 @@ import javax.annotation.PreDestroy;
 import com.acme.ride.passenger.message.RideRequestedMessageSender;
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.RideRequestedEvent;
+import io.opentracing.Scope;
+import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,6 +31,9 @@ public class SimulationService {
     int delay;
 
     private ScheduledExecutorService scheduler;
+
+    @Autowired
+    Tracer tracer;
 
     private DataGenerator generator = new DataGenerator();
 
@@ -48,7 +54,16 @@ public class SimulationService {
 
     private Runnable scheduleSendMessage(final int type) {
         Runnable runnable = () -> {
-            messageSender.send(buildRideRequestedEventMessage(type));
+            Message<RideRequestedEvent> message = buildRideRequestedEventMessage(type);
+            Scope scope = tracer.buildSpan("RideRequested").ignoreActiveSpan()
+                    .withTag(Tags.SPAN_KIND.getKey(), "RideRequest")
+                    .withTag("msgTraceId", message.getTraceId())
+                    .startActive(true);
+            try {
+                messageSender.send(message);
+            } finally {
+                scope.close();
+            }
         };
         return runnable;
     }
