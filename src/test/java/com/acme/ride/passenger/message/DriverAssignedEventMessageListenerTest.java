@@ -9,6 +9,7 @@ import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 import com.acme.ride.passenger.message.model.Message;
 import com.acme.ride.passenger.message.model.PassengerCanceledEvent;
+import io.opentracing.Tracer;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -23,6 +24,9 @@ public class DriverAssignedEventMessageListenerTest {
     @Mock
     private PassengerCanceledMessageSender messageSender;
 
+    @Mock
+    private Tracer tracer;
+
     @Captor
     private ArgumentCaptor<Message> messageCaptor;
 
@@ -34,6 +38,7 @@ public class DriverAssignedEventMessageListenerTest {
         setField(listener, "minDelay", 1, null);
         setField(listener, "maxDelay", 1, null);
         setField(listener, null, messageSender, PassengerCanceledMessageSender.class);
+        setField(listener, null, tracer, Tracer.class);
         listener.init();
     }
 

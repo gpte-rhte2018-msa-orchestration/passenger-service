@@ -15,6 +15,7 @@ import com.acme.ride.passenger.service.DataGenerator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.tag.StringTag;
 import org.slf4j.Logger;
@@ -110,7 +111,11 @@ public class DriverAssignedEventMessageListener {
     }
 
     private Runnable scheduleSendMessage(final Message<PassengerCanceledEvent> message) {
+        final Optional<Span> span = Optional.ofNullable(tracer.activeSpan());
         Runnable runnable = () -> {
+            span.ifPresent(s -> {
+                tracer.scopeManager().activate(s, true);
+            });
             messageSender.send(message);
         };
         return runnable;
